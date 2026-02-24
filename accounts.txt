@@ -46,4 +46,4 @@
 # OR use old IMAP format (if OAuth2 fails):
 # email:password
 # ============================================
-# jhsjh55@outlook.com:rMuD@e5HH5vuvJE
+jhsjh55@outlook.com:rMuD@e5HH5vuvJE
