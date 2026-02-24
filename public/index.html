@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Outlook Email Monitor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #0078d4;
+      --primary-dark: #005a9e;
+      --secondary: #106ebe;
+      --success: #107c10;
+      --warning: #ffb900;
+      --danger: #d13438;
+      --bg: #f3f2f1;
+      --surface: #ffffff;
+      --border: #edebe9;
+      --text: #323130;
+      --text-secondary: #605e5c;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: var(--primary);
+      color: white;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.disconnected {
+      background: var(--danger);
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Stats Cards */
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      padding: 1.5rem 2rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .stat-card .label {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .stat-card.accounts .value {
+      color: var(--success);
+    }
+
+    .stat-card.realtime .value {
+      color: var(--warning);
+    }
+
+    /* Main Content */
+    .main-content {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 1.5rem;
+      padding: 0 2rem 2rem;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: var(--surface);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 1rem;
+      height: fit-content;
+      max-height: calc(100vh - 250px);
+      overflow-y: auto;
+    }
+
+    .sidebar-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .account-list {
+      list-style: none;
+    }
+
+    .account-item {
+      padding: 0.75rem;
+      border-radius: 6px;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      border: 1px solid transparent;
+    }
+
+    .account-item:hover {
+      background: var(--bg);
+    }
+
+    .account-item.active {
+      background: rgba(0, 120, 212, 0.1);
+      border-color: var(--primary);
+    }
+
+    .account-item .email {
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+      word-break: break-all;
+    }
+
+    .account-item .status {
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .account-item .status.connected {
+      color: var(--success);
+    }
+
+    .account-item .status.error {
+      color: var(--danger);
+    }
+
+    .account-item .status.connecting {
+      color: var(--warning);
+    }
+
+    /* Email List */
+    .email-container {
+      background: var(--surface);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .email-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .email-header h2 {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .email-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border);
+    }
+
+    .email-list {
+      max-height: calc(100vh - 350px);
+      overflow-y: auto;
+    }
+
+    .email-item {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.2s;
+      position: relative;
+    }
+
+    .email-item:hover {
+      background: var(--bg);
+    }
+
+    .email-item.unread {
+      background: rgba(0, 120, 212, 0.05);
+    }
+
+    .email-item.unread::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--primary);
+    }
+
+    .email-item .from {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      font-size: 0.9rem;
+    }
+
+    .email-item .subject {
+      margin-bottom: 0.25rem;
+      font-size: 0.875rem;
+      color: var(--text);
+    }
+
+    .email-item .preview {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .email-item .meta {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .email-item .account-badge {
+      background: var(--primary);
+      color: white;
+      padding: 0.125rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.7rem;
+    }
+
+    /* Email Detail Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 8px;
+      width: 90%;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .modal-header h3 {
+      font-size: 1.125rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-header .from-info {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+      padding: 0;
+      line-height: 1;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .email-detail-content {
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+
+    /* Notifications */
+    .notification {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--surface);
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transform: translateY(150%);
+      transition: transform 0.3s ease;
+      z-index: 1001;
+    }
+
+    .notification.show {
+      transform: translateY(0);
+    }
+
+    .notification-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(0, 120, 212, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 1.25rem;
+    }
+
+    .notification-content h4 {
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .notification-content p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 3rem;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    /* Filter Tabs */
+    .filter-tabs {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .filter-tab {
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+    }
+
+    .filter-tab.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .main-content {
+        grid-template-columns: 1fr;
+      }
+      
+      .sidebar {
+        max-height: 200px;
+      }
+      
+      .stats-container {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>📧 Outlook Email Monitor</h1>
+    <div class="header-actions">
+      <div class="status-indicator">
+        <div class="status-dot" id="connectionStatus"></div>
+        <span id="connectionText">Connected</span>
+      </div>
+      <button class="btn btn-secondary" onclick="refreshData()">↻ Refresh</button>
+    </div>
+  </header>
+
+  <div class="stats-container">
+    <div class="stat-card">
+      <div class="label">Total Emails</div>
+      <div class="value" id="totalEmails">0</div>
+    </div>
+    <div class="stat-card accounts">
+      <div class="label">Connected Accounts</div>
+      <div class="value" id="connectedAccounts">0 / 0</div>
+    </div>
+    <div class="stat-card realtime">
+      <div class="label">New This Session</div>
+      <div class="value" id="sessionEmails">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Active Clients</div>
+      <div class="value" id="activeClients">0</div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <aside class="sidebar">
+      <h3 class="sidebar-title">📬 Accounts</h3>
+      <ul class="account-list" id="accountList">
+        <li class="account-item active" data-email="all">
+          <div class="email">All Accounts</div>
+          <div class="status connected">● All emails</div>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="email-container">
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all">All</button>
+        <button class="filter-tab" data-filter="unread">Unread</button>
+      </div>
+      <div class="email-header">
+        <h2>Inbox</h2>
+        <div class="email-actions">
+          <button class="btn btn-secondary" onclick="loadEmails()">↻ Reload</button>
+        </div>
+      </div>
+      <div class="email-list" id="emailList">
+        <div class="loading">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Email Detail Modal -->
+  <div class="modal-overlay" id="emailModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3 id="modalSubject"></h3>
+          <div class="from-info">
+            <strong>From:</strong> <span id="modalFrom"></span><br>
+            <strong>To:</strong> <span id="modalTo"></span><br>
+            <strong>Date:</strong> <span id="modalDate"></span><br>
+            <strong>Account:</strong> <span id="modalAccount"></span>
+          </div>
+        </div>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="email-detail-content" id="modalContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification -->
+  <div class="notification" id="notification">
+    <div class="notification-icon">📧</div>
+    <div class="notification-content">
+      <h4 id="notificationTitle">New Email</h4>
+      <p id="notificationText"></p>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let ws = null;
+    let currentFilter = 'all';
+    let selectedAccount = 'all';
+    let emails = [];
+    let accounts = [];
+    let sessionNewEmails = 0;
+
+    // DOM Elements
+    const emailListEl = document.getElementById('emailList');
+    const accountListEl = document.getElementById('accountList');
+    const notificationEl = document.getElementById('notification');
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      connectWebSocket();
+      loadEmails();
+      loadAccounts();
+      setupEventListeners();
+    });
+
+    // WebSocket Connection
+    function connectWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        document.getElementById('connectionStatus').classList.remove('disconnected');
+        document.getElementById('connectionText').textContent = 'Connected';
+      };
+
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        handleWebSocketMessage(message);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        document.getElementById('connectionStatus').classList.add('disconnected');
+        document.getElementById('connectionText').textContent = 'Disconnected';
+        // Reconnect after 3 seconds
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+      };
+    }
+
+    // Handle WebSocket messages
+    function handleWebSocketMessage(message) {
+      switch (message.type) {
+        case 'init':
+          emails = message.data.emails || [];
+          accounts = message.data.accounts || [];
+          updateStatistics(message.data.statistics);
+          renderAccounts();
+          renderEmails();
+          break;
+        case 'newEmails':
+          const newEmails = message.data.emails;
+          sessionNewEmails += newEmails.length;
+          document.getElementById('sessionEmails').textContent = sessionNewEmails;
+          document.getElementById('totalEmails').textContent = 
+            parseInt(document.getElementById('totalEmails').textContent) + newEmails.length;
+          
+          // Show notification
+          showNotification('New Email' + (newEmails.length > 1 ? 's' : ''), 
+            `${newEmails.length} from ${message.data.account}`);
+          
+          // Reload emails
+          loadEmails();
+          break;
+        case 'accountStatusChanged':
+        case 'accountError':
+          loadAccounts();
+          break;
+      }
+    }
+
+    // Update Statistics
+    function updateStatistics(stats) {
+      document.getElementById('totalEmails').textContent = stats.totalEmails;
+      document.getElementById('connectedAccounts').textContent = 
+        `${stats.accountsConnected} / ${stats.accountsTotal}`;
+      document.getElementById('activeClients').textContent = stats.clients || 0;
+    }
+
+    // Load Emails from API
+    async function loadEmails() {
+      try {
+        const accountParam = selectedAccount !== 'all' ? `&account=${encodeURIComponent(selectedAccount)}` : '';
+        const response = await fetch(`/api/emails?limit=100${accountParam}`);
+        const result = await response.json();
+        
+        if (result.success) {
+          emails = result.data;
+          renderEmails();
+          updateStatistics(result.statistics);
+        }
+      } catch (err) {
+        console.error('Error loading emails:', err);
+        emailListEl.innerHTML = '<div class="empty-state">Error loading emails</div>';
+      }
+    }
+
+    // Load Accounts
+    async function loadAccounts() {
+      try {
+        const response = await fetch('/api/accounts');
+        const result = await response.json();
+        
+        if (result.success) {
+          accounts = result.data;
+          renderAccounts();
+          updateStatistics(result.statistics);
+        }
+      } catch (err) {
+        console.error('Error loading accounts:', err);
+      }
+    }
+
+    // Render Emails
+    function renderEmails() {
+      let filteredEmails = emails;
+      
+      // Apply filter
+      if (currentFilter === 'unread') {
+        filteredEmails = filteredEmails.filter(e => !e.read);
+      }
+      
+      if (filteredEmails.length === 0) {
+        emailListEl.innerHTML = `
+          <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+            <p>No emails yet</p>
+          </div>
+        `;
+        return;
+      }
+
+      emailListEl.innerHTML = filteredEmails.map(email => `
+        <div class="email-item ${email.read ? '' : 'unread'}" onclick="openEmail('${email.id}')">
+          <div class="from">${escapeHtml(email.from)}</div>
+          <div class="subject">${escapeHtml(email.subject)}</div>
+          <div class="preview">${escapeHtml(email.preview)}</div>
+          <div class="meta">
+            <span>${formatDate(email.date)}</span>
+            <span class="account-badge">${escapeHtml(email.account.split('@')[0])}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Render Accounts
+    function renderAccounts() {
+      const allAccountsItem = `
+        <li class="account-item ${selectedAccount === 'all' ? 'active' : ''}" data-email="all">
+          <div class="email">All Accounts</div>
+          <div class="status connected">● ${emails.length} emails</div>
+        </li>
+      `;
+      
+      const accountsItems = accounts.map(account => `
+        <li class="account-item ${selectedAccount === account.email ? 'active' : ''}" data-email="${escapeHtml(account.email)}">
+          <div class="email">${escapeHtml(account.email)}</div>
+          <div class="status ${account.status}">● ${account.status}</div>
+        </li>
+      `).join('');
+      
+      accountListEl.innerHTML = allAccountsItems + accountsItems;
+      
+      // Re-attach click handlers
+      document.querySelectorAll('.account-item').forEach(item => {
+        item.addEventListener('click', () => {
+          selectedAccount = item.dataset.email;
+          document.querySelectorAll('.account-item').forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+          loadEmails();
+        });
+      });
+    }
+
+    // Open Email Modal
+    async function openEmail(emailId) {
+      try {
+        const response = await fetch(`/api/emails/${emailId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+          const email = result.data;
+          document.getElementById('modalSubject').textContent = email.subject;
+          document.getElementById('modalFrom').textContent = email.from;
+          document.getElementById('modalTo').textContent = email.to;
+          document.getElementById('modalDate').textContent = formatDate(email.date);
+          document.getElementById('modalAccount').textContent = email.account;
+          document.getElementById('modalContent').textContent = email.text || email.preview;
+          document.getElementById('emailModal').classList.add('active');
+        }
+      } catch (err) {
+        console.error('Error loading email:', err);
+      }
+    }
+
+    // Close Modal
+    function closeModal() {
+      document.getElementById('emailModal').classList.remove('active');
+    }
+
+    // Show Notification
+    function showNotification(title, text) {
+      document.getElementById('notificationTitle').textContent = title;
+      document.getElementById('notificationText').textContent = text;
+      notificationEl.classList.add('show');
+      
+      setTimeout(() => {
+        notificationEl.classList.remove('show');
+      }, 5000);
+    }
+
+    // Setup Event Listeners
+    function setupEventListeners() {
+      // Filter tabs
+      document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          currentFilter = tab.dataset.filter;
+          document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          renderEmails();
+        });
+      });
+
+      // Close modal on overlay click
+      document.getElementById('emailModal').addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal-overlay')) {
+          closeModal();
+        }
+      });
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeModal();
+        }
+      });
+    }
+
+    // Refresh Data
+    async function refreshData() {
+      await Promise.all([loadEmails(), loadAccounts()]);
+      showNotification('Refreshed', 'Data updated successfully');
+    }
+
+    // Utility Functions
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatDate(date) {
+      if (!date) return '';
+      const d = new Date(date);
+      const now = new Date();
+      const diff = now - d;
+      
+      if (diff < 60000) return 'Just now';
+      if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+      if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+      
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        loadEmails();
+        loadAccounts();
+      }
+    }, 30000);
+  </script>
+</body>
+</html>

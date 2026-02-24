@@ -1,0 +1,18 @@
+{
+  "name": "outlook-email-monitor",
+  "version": "1.0.0",
+  "description": "Advanced Outlook email monitoring system with real-time web dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "imap": "^0.8.19",
+    "mailparser": "^3.7.1",
+    "express": "^4.21.0",
+    "ws": "^8.18.0",
+    "uuid": "^10.0.0",
+    "dotenv": "^16.4.5"
+  }
+}

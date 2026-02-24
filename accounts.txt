@@ -1,0 +1,18 @@
+# ============================================
+# OUTLOOK EMAIL ACCOUNTS CONFIGURATION
+# ============================================
+# Format: email:password
+# One account per line
+# Lines starting with # are comments
+# 
+# Example:
+jhsjh55@outlook.com:rMuD@e5HH5vuvJE
+# another@gmail.com:Password456
+# 
+# IMPORTANT: For Outlook/Office 365, use App Passwords
+# if 2FA is enabled. Get them from:
+# https://account.microsoft.com/security
+# ============================================
+
+# Add your accounts below (remove this example):
+# example@outlook.com:YourPasswordHere
