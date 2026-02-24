@@ -1,18 +1,49 @@
 # ============================================
 # OUTLOOK EMAIL ACCOUNTS CONFIGURATION
 # ============================================
-# Format: email:password
-# One account per line
-# Lines starting with # are comments
 # 
-# Example:
-jhsjh55@outlook.com:rMuD@e5HH5vuvJE
-# another@gmail.com:Password456
+# TWO FORMATS SUPPORTED:
 # 
-# IMPORTANT: For Outlook/Office 365, use App Passwords
-# if 2FA is enabled. Get them from:
-# https://account.microsoft.com/security
+# 1. NEW FORMAT (OAuth2 - RECOMMENDED):
+#    Use this for Microsoft Graph API (no IMAP needed)
+#    Format: email|clientId|clientSecret|tenantId|refreshToken
+#    Example:
+#    jhsjh55@outlook.com|YOUR_CLIENT_ID|YOUR_CLIENT_SECRET|YOUR_TENANT_ID|YOUR_REFRESH_TOKEN
+#
+# 2. OLD FORMAT (IMAP - DEPRECATED):
+#    Format: email:password
+#    Example:
+#    jhsjh55@outlook.com:rMuD@e5HH5vuvJE
+#
+# ============================================
+# SETUP INSTRUCTIONS FOR OAUTH2 (Microsoft Graph API):
+# ============================================
+# 
+# 1. Go to Azure Portal: https://portal.azure.com
+# 2. Register a new application
+# 3. Create a client secret
+# 4. Grant API permissions: Mail.Read, Mail.ReadWrite
+# 5. Get tenant ID from Azure AD overview
+# 
+# For delegated access (user's mailbox), you'll need:
+# - Use the "/common" tenant or your specific tenant
+# - Get a refresh token using OAuth2 flow
+# 
+# For app-only access (single tenant):
+# - Use your tenant ID
+# - Grant Application permissions (not Delegated)
+# 
+# Get more info: https://docs.microsoft.com/en-us/graph/auth-v2-service
 # ============================================
 
-# Add your accounts below (remove this example):
-# example@outlook.com:YourPasswordHere
+# Add your OAuth2 accounts below (one per line):
+# email|clientId|clientSecret|tenantId|refreshToken
+
+# Example OAuth2 account (replace with your values):
+# your-email@outlook.com|xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx|yourClientSecret|xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx|
+
+# ============================================
+# OR use old IMAP format (if OAuth2 fails):
+# email:password
+# ============================================
+# jhsjh55@outlook.com:rMuD@e5HH5vuvJE
